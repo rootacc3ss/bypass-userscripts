@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Bypass.VIP Premium Bypasser (API Key Required)
 // @namespace     bypass.vip
-// @version       3.3.0
+// @version       3.3.1
 // @author        rootacce3ss
 // @description   Inspired by ZXRK's bypass.vip userscript. This one supports a premium API key, has all the bugs fixed and will have more up to date links. Be sure to configure below, where the API key is requested.
 // @match         *://loot-link.com/*
@@ -225,6 +225,17 @@
     if (window.top !== window.self) {return;};
     'use strict';
     
+    // ========================================
+    // CONFIGURATION SETTINGS - EDIT THESE!
+    // ========================================
+    // YOU MUST GET AN API KEY FROM THE BYPASS.VIP DISCORD!
+    const config = {
+        apiKey: 'x-api-key', // Your API key here - REQUIRED!
+        autoRedirect2s: false, // Set to true for auto redirect after 2 seconds
+        autoRedirect5s: false, // Set to true for auto redirect after 5 seconds (only one can be true)
+        newTab: true // Open bypass links in new tab
+    };
+    
     // Luarmor configuration - define first before detection
     const luarmorConfig = {
         time: 10,
@@ -316,9 +327,8 @@
             const rawRedirect = urlParams.get('redirect');
 
             if (!rawRedirect) {
-                const targetUrl = `https://bypass.vip/userscript.html?url=${encodeURIComponent(location.href)}&time=${luarmorConfig.time}&key=${luarmorConfig.key}`;
-                console.log('No redirect parameter found, redirecting to:', targetUrl);
-                location.replace(targetUrl);
+                // For LuArmor links without redirect parameter, show error message
+                showLuarmorError('Error: No redirect parameter found. This may be an invalid or incomplete LuArmor link.');
                 return;
             }
 
@@ -449,15 +459,6 @@
         return; // Exit early - don't run regular system
     }
     
-    // EDIT THIS!
-    // YOU MUST GET AN API KEY FROM THE BYPASS.VIP DISCORD!
-    // Configuration - Edit these settings directly in the script
-    const config = {
-        apiKey: 'x-api-key', // Your API key here
-        autoRedirect2s: false, // Set to true for auto redirect after 2 seconds
-        autoRedirect5s: false, // Set to true for auto redirect after 5 seconds (only one can be true)
-        newTab: true // Open bypass links in new tab
-    };
     const API_BASE = 'https://api.bypass.vip/premium';
 
     // Regular API functions for non-Luarmor sites
