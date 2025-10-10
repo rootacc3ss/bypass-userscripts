@@ -319,18 +319,94 @@
         }
     }
 
+    async function handleLuarmorApiBypass() {
+        console.log('Handling LuArmor API bypass for:', window.location.href);
+        
+        // Show loading container while calling API
+        const container = createLuarmorContainer();
+        if (document.body) {
+            document.body.appendChild(container);
+        } else {
+            document.documentElement.appendChild(container);
+        }
+        
+        const statusDiv = container.querySelector('#countdown');
+        const btn = container.querySelector('#nextBtn');
+        const spinner = container.querySelector('#spinner');
+        
+        statusDiv.textContent = 'Bypassing LuArmor link...';
+        btn.disabled = true;
+        spinner.style.display = 'block';
+        
+        try {
+            // Call the bypass API
+            const result = await new Promise((resolve, reject) => {
+                const requestUrl = `https://api.bypass.vip/premium/bypass?url=${encodeURIComponent(window.location.href)}`;
+                const requestHeaders = {
+                    'x-api-key': config.apiKey,
+                    'Content-Type': 'application/json'
+                };
+                
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: requestUrl,
+                    headers: requestHeaders,
+                    onload: (response) => {
+                        try {
+                            if (response.status === 200) {
+                                const data = JSON.parse(response.responseText);
+                                resolve(data);
+                            } else {
+                                reject(new Error(`API Error: ${response.status} - ${response.responseText}`));
+                            }
+                        } catch (e) {
+                            reject(new Error(`Failed to parse API response: ${e.message}`));
+                        }
+                    },
+                    onerror: (error) => reject(new Error('Network error occurred')),
+                    ontimeout: () => reject(new Error('Request timed out'))
+                });
+            });
+            
+            // Get the bypassed URL from the API response
+            let bypassedUrl = null;
+            if (result) {
+                bypassedUrl = result.bypassedUrl || result.url || result.result || result.destination || result.link;
+                if (typeof result === 'string' && result.startsWith('http')) {
+                    bypassedUrl = result;
+                }
+            }
+            
+            if (bypassedUrl && isValidUrl(bypassedUrl)) {
+                // Redirect to the bypassed URL with redirect parameter (simulate LuArmor behavior)
+                const newUrl = `${window.location.origin}${window.location.pathname}?redirect=${encodeURIComponent(bypassedUrl)}`;
+                console.log('Redirecting to:', newUrl);
+                window.location.replace(newUrl);
+            } else {
+                throw new Error('No valid bypass URL found in API response');
+            }
+            
+        } catch (error) {
+            console.error('LuArmor API bypass error:', error);
+            spinner.style.display = 'none';
+            btn.disabled = false;
+            statusDiv.textContent = `Error: ${error.message}`;
+            statusDiv.style.color = '#ff4d4d';
+        }
+    }
+
     function runLuarmorScript() {
         console.log('Running Luarmor script - exact replica of original');
         
-        try {
-            const urlParams = new URLSearchParams(window.location.search);
-            const rawRedirect = urlParams.get('redirect');
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawRedirect = urlParams.get('redirect');
 
-            if (!rawRedirect) {
-                // For LuArmor links without redirect parameter, show error message
-                showLuarmorError('Error: No redirect parameter found. This may be an invalid or incomplete LuArmor link.');
-                return;
-            }
+        if (!rawRedirect) {
+            // For LuArmor links without redirect parameter, use the API to get the bypassed link
+            console.log('No redirect parameter found, calling bypass API for LuArmor link...');
+            handleLuarmorApiBypass();
+            return;
+        }
 
             let redirectUrl = rawRedirect;
 
@@ -432,13 +508,6 @@
                 newBtn.setAttribute('aria-label', 'Proceed to link');
                 newBtn.tabIndex = 0;
             } catch (err) { /* silent */ }
-
-        } catch (err) {
-            console.error('Luarmor userscript error:', err);
-            if (document.body) {
-                document.body.innerHTML = `<div style="color: #ff4d4d; text-align: center; padding: 40px; background: #121212; height: 100vh; display: flex; align-items: center; justify-content: center; font-size: 1.2em;">Error in bypass script: ${err && err.message ? err.message : err}. Please reload the page.</div>`;
-            }
-        }
     }
     
     // Check if we're on luarmor.net or its subdomains first
@@ -450,11 +519,18 @@
         console.log('Current URL:', window.location.href);
         console.log('Document ready state:', document.readyState);
         
-        // Use luarmor-specific system - match original timing exactly
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', runLuarmorScript, { once: true });
-        } else {
-            runLuarmorScript();
+        // Use luarmor-specific system - match original structure exactly
+        try {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', runLuarmorScript, { once: true });
+            } else {
+                runLuarmorScript();
+            }
+        } catch (err) {
+            console.error('Luarmor userscript error:', err);
+            if (document.body) {
+                document.body.innerHTML = `<div style="color: #ff4d4d; text-align: center; padding: 40px; background: #121212; height: 100vh; display: flex; align-items: center; justify-content: center; font-size: 1.2em;">Error in bypass script: ${err && err.message ? err.message : err}. Please reload the page.</div>`;
+            }
         }
         return; // Exit early - don't run regular system
     }
