@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Bypass.VIP Premium Bypasser (API Key Required)
 // @namespace     bypass.vip
-// @version       3.3.2
+// @version       3.3.3
 // @author        rootacce3ss
 // @description   Inspired by ZXRK's bypass.vip userscript. This one supports a premium API key, has all the bugs fixed and will have more up to date links. Be sure to configure below, where the API key is requested.
 // @match         *://loot-link.com/*
@@ -319,195 +319,122 @@
         }
     }
 
-    async function handleLuarmorApiBypass() {
-        console.log('Handling LuArmor API bypass for:', window.location.href);
+
+
+    function runLuarmorScript() {
+        console.log('Running LuArmor script - exact replica of original in our premium style');
         
-        // Show loading container while calling API
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawRedirect = urlParams.get('redirect');
+
+        if (!rawRedirect) {
+            // Exact replica of original: redirect to bypass.vip with time and key parameters
+            const targetUrl = `https://bypass.vip/userscript.html?url=${encodeURIComponent(location.href)}&time=${luarmorConfig.time}&key=${luarmorConfig.key}`;
+            console.log('No redirect parameter found, redirecting to bypass.vip:', targetUrl);
+            location.replace(targetUrl);
+            return;
+        }
+
+        let redirectUrl = rawRedirect;
+
+        if (!isValidUrl(redirectUrl)) {
+            try {
+                const decoded = decodeURIComponent(rawRedirect);
+                if (isValidUrl(decoded)) {
+                    redirectUrl = decoded;
+                } else {
+                    throw new Error('Invalid redirect URL after decoding');
+                }
+            } catch (err) {
+                showLuarmorError('Error: Invalid or malformed redirect URL. Please try again.');
+                return;
+            }
+        }
+
+        console.log('Valid redirect URL found:', redirectUrl);
+
         const container = createLuarmorContainer();
         if (document.body) {
             document.body.appendChild(container);
         } else {
             document.documentElement.appendChild(container);
         }
-        
-        const statusDiv = container.querySelector('#countdown');
+
+        const countdownEl = container.querySelector('#countdown');
         const btn = container.querySelector('#nextBtn');
         const spinner = container.querySelector('#spinner');
-        
-        statusDiv.textContent = 'Bypassing LuArmor link...';
-        btn.disabled = true;
-        spinner.style.display = 'block';
-        
-        try {
-            // Call the bypass API
-            const result = await new Promise((resolve, reject) => {
-                const requestUrl = `https://api.bypass.vip/premium/bypass?url=${encodeURIComponent(window.location.href)}`;
-                const requestHeaders = {
-                    'x-api-key': config.apiKey,
-                    'Content-Type': 'application/json'
-                };
-                
-                GM_xmlhttpRequest({
-                    method: 'GET',
-                    url: requestUrl,
-                    headers: requestHeaders,
-                    onload: (response) => {
-                        try {
-                            if (response.status === 200) {
-                                const data = JSON.parse(response.responseText);
-                                resolve(data);
-                            } else {
-                                reject(new Error(`API Error: ${response.status} - ${response.responseText}`));
-                            }
-                        } catch (e) {
-                            reject(new Error(`Failed to parse API response: ${e.message}`));
-                        }
-                    },
-                    onerror: (error) => reject(new Error('Network error occurred')),
-                    ontimeout: () => reject(new Error('Request timed out'))
-                });
-            });
-            
-            // Get the bypassed URL from the API response
-            let bypassedUrl = null;
-            if (result) {
-                bypassedUrl = result.bypassedUrl || result.url || result.result || result.destination || result.link;
-                if (typeof result === 'string' && result.startsWith('http')) {
-                    bypassedUrl = result;
-                }
+
+        const newBtn = btn; // element is controlled by us; no need to clone
+        const hasHash = (url) => {
+            try {
+                return new URL(url).searchParams.has('hash') || url.includes('hash=');
+            } catch {
+                return url.includes('hash=');
             }
-            
-            if (bypassedUrl && isValidUrl(bypassedUrl)) {
-                // Redirect to the bypassed URL with redirect parameter (simulate LuArmor behavior)
-                const newUrl = `${window.location.origin}${window.location.pathname}?redirect=${encodeURIComponent(bypassedUrl)}`;
-                console.log('Redirecting to:', newUrl);
-                window.location.replace(newUrl);
-            } else {
-                throw new Error('No valid bypass URL found in API response');
-            }
-            
-        } catch (error) {
-            console.error('LuArmor API bypass error:', error);
-            spinner.style.display = 'none';
-            btn.disabled = false;
-            statusDiv.textContent = `Error: ${error.message}`;
-            statusDiv.style.color = '#ff4d4d';
-        }
-    }
+        };
 
-    function runLuarmorScript() {
-        console.log('Running Luarmor script - exact replica of original');
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const rawRedirect = urlParams.get('redirect');
-
-        if (!rawRedirect) {
-            // For LuArmor links without redirect parameter, use the API to get the bypassed link
-            console.log('No redirect parameter found, calling bypass API for LuArmor link...');
-            handleLuarmorApiBypass();
-            return;
-        }
-
-            let redirectUrl = rawRedirect;
-
-            if (!isValidUrl(redirectUrl)) {
-                try {
-                    const decoded = decodeURIComponent(rawRedirect);
-                    if (isValidUrl(decoded)) {
-                        redirectUrl = decoded;
-                    } else {
-                        throw new Error('Invalid redirect URL after decoding');
-                    }
-                } catch (err) {
-                    showLuarmorError('Error: Invalid or malformed redirect URL. Please try again.');
-                    return;
-                }
-            }
-
-            console.log('Valid redirect URL found:', redirectUrl);
-
-            const container = createLuarmorContainer();
-            if (document.body) {
-                document.body.appendChild(container);
-            } else {
-                document.documentElement.appendChild(container);
-            }
-
-            const countdownEl = container.querySelector('#countdown');
-            const btn = container.querySelector('#nextBtn');
-            const spinner = container.querySelector('#spinner');
-
-            const newBtn = btn; // element is controlled by us; no need to clone
-            const hasHash = (url) => {
-                try {
-                    return new URL(url).searchParams.has('hash') || url.includes('hash=');
-                } catch {
-                    return url.includes('hash=');
-                }
-            };
-
-            if (hasHash(redirectUrl)) {
-                let time = 8;
-                countdownEl.style.color = '#ff4d4d';
-                countdownEl.style.fontWeight = 'bold';
-                const interval = setInterval(() => {
-                    countdownEl.textContent = `YOU HAVE EXACTLY ${time} SECONDS TO CLICK THE BUTTON BEFORE YOUR HASH EXPIRES`;
-                    time--;
-                    if (time < 0) {
-                        clearInterval(interval);
-                        countdownEl.textContent = 'HASH EXPIRED. RETRYING...';
-                        countdownEl.style.color = '';
-                        countdownEl.style.fontWeight = '';
-                        newBtn.disabled = true;
-                        spinner.style.display = 'block';
-                        setTimeout(() => {
-                            location.replace(location.href.split('?')[0]);
-                        }, 3500);
-                    }
-                }, 1000);
-            } else {
-                countdownEl.style.display = 'none';
-            }
-
-            const performRedirect = () => {
-                if (!redirectUrl || newBtn.disabled) return;
-                try {
+        if (hasHash(redirectUrl)) {
+            let time = 8;
+            countdownEl.style.color = '#ff4d4d';
+            countdownEl.style.fontWeight = 'bold';
+            const interval = setInterval(() => {
+                countdownEl.textContent = `YOU HAVE EXACTLY ${time} SECONDS TO CLICK THE BUTTON BEFORE YOUR HASH EXPIRES`;
+                time--;
+                if (time < 0) {
+                    clearInterval(interval);
+                    countdownEl.textContent = 'HASH EXPIRED. RETRYING...';
+                    countdownEl.style.color = '';
+                    countdownEl.style.fontWeight = '';
                     newBtn.disabled = true;
                     spinner.style.display = 'block';
                     setTimeout(() => {
-                        try {
-                            window.location.assign(redirectUrl);
-                        } catch (err) {
-                            window.location.href = redirectUrl;
-                        }
-                    }, 60);
-                } catch (err) {
-                    showLuarmorError('Redirect failed. Please copy and open the link manually: ' + redirectUrl);
-                    newBtn.disabled = false;
-                    spinner.style.display = 'none';
+                        location.replace(location.href.split('?')[0]);
+                    }, 3500);
                 }
-            };
+            }, 1000);
+        } else {
+            countdownEl.style.display = 'none';
+        }
 
-            newBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                performRedirect();
-            }, { passive: false });
-
-            newBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                performRedirect();
-            }, { passive: false });
-
-            container.addEventListener('click', (e) => {
-                if (e.target && e.target.id === 'nextBtn') return;
-            });
-
+        const performRedirect = () => {
+            if (!redirectUrl || newBtn.disabled) return;
             try {
-                newBtn.setAttribute('aria-label', 'Proceed to link');
-                newBtn.tabIndex = 0;
-            } catch (err) { /* silent */ }
+                newBtn.disabled = true;
+                spinner.style.display = 'block';
+                setTimeout(() => {
+                    try {
+                        window.location.assign(redirectUrl);
+                    } catch (err) {
+                        window.location.href = redirectUrl;
+                    }
+                }, 60);
+            } catch (err) {
+                showLuarmorError('Redirect failed. Please copy and open the link manually: ' + redirectUrl);
+                newBtn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        };
+
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            performRedirect();
+        }, { passive: false });
+
+        newBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            performRedirect();
+        }, { passive: false });
+
+        container.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'nextBtn') return;
+        });
+
+        try {
+            newBtn.setAttribute('aria-label', 'Proceed to link');
+            newBtn.tabIndex = 0;
+        } catch (err) { /* silent */ }
     }
     
     // Check if we're on luarmor.net or its subdomains first
