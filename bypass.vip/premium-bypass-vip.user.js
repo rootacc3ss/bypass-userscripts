@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Bypass.VIP Premium Bypasser (API Key Required)
 // @namespace     bypass.vip
-// @version       3.3.1
+// @version       3.3.2
 // @author        rootacce3ss
 // @description   Inspired by ZXRK's bypass.vip userscript. This one supports a premium API key, has all the bugs fixed and will have more up to date links. Be sure to configure below, where the API key is requested.
 // @match         *://loot-link.com/*
