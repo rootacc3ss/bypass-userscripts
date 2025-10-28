@@ -1,9 +1,18 @@
 // ==UserScript==
-// @name          Bypass.VIP Premium Bypasser (API Key Required)
+// @name          Bypass.VIP Premium Bypasser - Mobile Optimized (API Key Required)
 // @namespace     bypass.vip
-// @version       3.3.3
+// @version       3.3.3-mobile
 // @author        rootacce3ss
-// @description   Inspired by ZXRK's bypass.vip userscript. This one supports a premium API key, has all the bugs fixed and will have more up to date links. Be sure to configure below, where the API key is requested.
+// @description   Mobile-optimized version with Safari iOS compatibility. Supports premium API key with touch events and fallback fetch API for iOS Safari. Configure API key below.
+// 
+// MOBILE OPTIMIZATIONS:
+// - Enhanced touch event handling for iOS Safari
+// - Fetch API fallback for GM_xmlhttpRequest (CORS compatibility)
+// - Reduced z-index values for better mobile rendering
+// - Mobile-friendly button sizes (min 44px touch targets)
+// - iOS-specific CSS transforms and webkit properties
+// - document-end timing for stable DOM on mobile
+// - Touch-optimized event listeners with passive flags
 // @match         *://loot-link.com/*
 // @match         *://best-links.org/*
 // @match         *://loot-links.com/*
@@ -216,9 +225,9 @@
 // @match         *://tinyurl.com/*
 // @grant         GM_xmlhttpRequest
 // @connect       api.bypass.vip
-// @run-at        document-start
-// @downloadURL   https://github.com/rootacc3ss/bypass-userscripts/raw/refs/heads/main/bypass.vip/premium-bypass-vip.user.js
-// @updateURL     https://github.com/rootacc3ss/bypass-userscripts/raw/refs/heads/main/bypass.vip/premium-bypass-vip.user.js
+// @run-at        document-end
+// @downloadURL   https://github.com/rootacc3ss/bypass-userscripts/raw/refs/heads/main/bypass.vip/premium-bypass-vip-mobile.user.js
+// @updateURL     https://github.com/rootacc3ss/bypass-userscripts/raw/refs/heads/main/bypass.vip/premium-bypass-vip-mobile.user.js
 // ==/UserScript==
 
 (async () => {
@@ -243,6 +252,55 @@
         safeMode: true
     };
 
+    // Mobile detection and compatibility
+    const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    console.log(`Mobile detection: isMobile=${isMobile}, isIOS=${isIOS}, isSafari=${isSafari}`);
+
+    // Enhanced touch support for mobile - attach multiple event types
+    function addMobileTouchSupport(element, handler) {
+        if (!element || !handler) return;
+        
+        let touchStartTime = 0;
+        const TOUCH_DELAY = 300; // ms
+        
+        // Handle touch events
+        element.addEventListener('touchstart', (e) => {
+            touchStartTime = Date.now();
+            element.style.opacity = '0.8';
+        }, { passive: true });
+        
+        element.addEventListener('touchend', (e) => {
+            const touchDuration = Date.now() - touchStartTime;
+            element.style.opacity = '1';
+            
+            // Only fire if touch was quick (not a scroll)
+            if (touchDuration < TOUCH_DELAY) {
+                e.preventDefault();
+                e.stopPropagation();
+                handler(e);
+            }
+        }, { passive: false });
+        
+        element.addEventListener('touchcancel', () => {
+            element.style.opacity = '1';
+        }, { passive: true });
+        
+        // Standard click for desktop fallback
+        element.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handler(e);
+        }, { passive: false });
+        
+        // Make button more accessible
+        element.style.cursor = 'pointer';
+        element.style.userSelect = 'none';
+        element.style.webkitUserSelect = 'none';
+        element.style.webkitTapHighlightColor = 'transparent';
+    }
+
     // Luarmor functions - exact replica of original script
     function createLuarmorContainer() {
         const container = document.createElement('div');
@@ -261,29 +319,39 @@
             justify-content: center;
             text-align: center;
             padding: 40px;
-            z-index: 2147483647;
+            z-index: 999999;
             font-family: 'Arial', sans-serif;
             overflow: auto;
             box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
             pointer-events: auto;
+            -webkit-overflow-scrolling: touch;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
         `;
         container.innerHTML = `
             <h2 style="font-size: 2em; margin-bottom: 15px; color: #ffffff; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);">BYPASS.VIP USERSCRIPT</h2>
             <p style="margin-bottom: 30px; font-size: 1.1em; color: #b0b0b0;">Click the button below to proceed to the bypassed link.</p>
             <div id="countdown" style="font-size: 1.3em; margin-bottom: 30px; padding: 10px; background: #1e1e1e; border-radius: 8px; width: 80%; max-width: 600px;"></div>
             <button id="nextBtn" type="button" style="
-                padding: 12px 24px;
+                padding: 16px 32px;
                 background-color: #1E88E5;
                 color: #ffffff;
                 border: none;
                 border-radius: 8px;
                 cursor: pointer;
                 transition: background-color 0.3s, transform 0.2s;
-                font-size: 1.1em;
+                font-size: 1.2em;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
                 position: relative;
-                z-index: 2147483647;
+                z-index: 999999;
                 pointer-events: auto;
+                min-height: 48px;
+                min-width: 120px;
+                touch-action: manipulation;
+                -webkit-appearance: none;
+                -webkit-tap-highlight-color: transparent;
+                user-select: none;
+                -webkit-user-select: none;
             ">Next</button>
             <div id="errorMsg" style="color: #ff4d4d; margin-top: 30px; display: none; font-size: 1.1em; background: #2a2a2a; padding: 10px; border-radius: 8px;"></div>
             <div id="spinner" style="border: 5px solid #333333; border-top: 5px solid #1E88E5; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; margin-top: 20px;"></div>
@@ -512,17 +580,8 @@
             }
         };
 
-        newBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            performRedirect();
-        }, { passive: false });
-
-        newBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            performRedirect();
-        }, { passive: false });
+        // Use enhanced mobile touch support for button
+        addMobileTouchSupport(newBtn, performRedirect);
 
         container.addEventListener('click', (e) => {
             if (e.target && e.target.id === 'nextBtn') return;
@@ -619,96 +678,150 @@
         return container;
     }
 
-    // Regular API functions for non-Luarmor sites
+    // Regular API functions for non-Luarmor sites with fetch fallback for iOS Safari
     async function bypassUrl(url) {
-        return new Promise((resolve, reject) => {
-            const requestUrl = `${API_BASE}/bypass?url=${encodeURIComponent(url)}`;
-            const requestHeaders = {
-                'x-api-key': config.apiKey,
-                'Content-Type': 'application/json'
-            };
-            
-            console.log('Making bypass request:');
-            console.log('- URL:', requestUrl);
-            console.log('- Headers:', requestHeaders);
-            console.log('- Current page URL:', url);
-            console.log('- API Key length:', config.apiKey ? config.apiKey.length : 'null/undefined');
-            console.log('- API Key starts with:', config.apiKey ? config.apiKey.substring(0, 8) + '...' : 'null');
-            
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: requestUrl,
-                headers: requestHeaders,
-                onload: (response) => {
-                    try {
-                        console.log('Bypass API Response:', response.status, response.responseText);
-                        if (response.status === 200) {
-                            const data = JSON.parse(response.responseText);
-                            console.log('Parsed bypass data:', data);
-                            resolve(data);
-                        } else {
-                            reject(new Error(`API Error: ${response.status} - ${response.statusText} - ${response.responseText}`));
+        const requestUrl = `${API_BASE}/bypass?url=${encodeURIComponent(url)}`;
+        const requestHeaders = {
+            'x-api-key': config.apiKey,
+            'Content-Type': 'application/json'
+        };
+        
+        console.log('Making bypass request:');
+        console.log('- URL:', requestUrl);
+        console.log('- Method:', isIOS ? 'fetch (iOS fallback)' : 'GM_xmlhttpRequest');
+        console.log('- Current page URL:', url);
+        
+        // Use fetch API for iOS Safari, GM_xmlhttpRequest for everything else
+        if (isIOS || typeof GM_xmlhttpRequest === 'undefined') {
+            try {
+                console.log('Using fetch API for iOS Safari compatibility');
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    headers: requestHeaders,
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+                
+                console.log('Fetch Response Status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Parsed bypass data:', data);
+                    return data;
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`API Error: ${response.status} - ${response.statusText} - ${errorText}`);
+                }
+            } catch (e) {
+                console.error('Fetch error:', e);
+                throw new Error(`Fetch failed: ${e.message}`);
+            }
+        } else {
+            return new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: requestUrl,
+                    headers: requestHeaders,
+                    onload: (response) => {
+                        try {
+                            console.log('Bypass API Response:', response.status, response.responseText);
+                            if (response.status === 200) {
+                                const data = JSON.parse(response.responseText);
+                                console.log('Parsed bypass data:', data);
+                                resolve(data);
+                            } else {
+                                reject(new Error(`API Error: ${response.status} - ${response.statusText} - ${response.responseText}`));
+                            }
+                        } catch (e) {
+                            reject(new Error(`Failed to parse API response: ${e.message} - Raw response: ${response.responseText}`));
                         }
-                    } catch (e) {
-                        reject(new Error(`Failed to parse API response: ${e.message} - Raw response: ${response.responseText}`));
-                    }
-                },
-                onerror: (error) => reject(new Error('Network error occurred')),
-                ontimeout: () => reject(new Error('Request timed out'))
+                    },
+                    onerror: (error) => reject(new Error('Network error occurred')),
+                    ontimeout: () => reject(new Error('Request timed out'))
+                });
             });
-        });
+        }
     }
 
     async function refreshBypass(url) {
-        return new Promise((resolve, reject) => {
-            const requestUrl = `${API_BASE}/refresh?url=${encodeURIComponent(url)}`;
-            const requestHeaders = {
-                'x-api-key': config.apiKey,
-                'Content-Type': 'application/json'
-            };
-            
-            console.log('Making refresh request:');
-            console.log('- URL:', requestUrl);
-            console.log('- Headers:', requestHeaders);
-            console.log('- Current page URL:', url);
-            console.log('- API Key length:', config.apiKey ? config.apiKey.length : 'null/undefined');
-            console.log('- API Key starts with:', config.apiKey ? config.apiKey.substring(0, 8) + '...' : 'null');
-            
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: requestUrl,
-                headers: requestHeaders,
-                timeout: 30000, // 30 second timeout for refresh (longer than bypass)
-                onload: (response) => {
+        const requestUrl = `${API_BASE}/refresh?url=${encodeURIComponent(url)}`;
+        const requestHeaders = {
+            'x-api-key': config.apiKey,
+            'Content-Type': 'application/json'
+        };
+        
+        console.log('Making refresh request:');
+        console.log('- URL:', requestUrl);
+        console.log('- Method:', isIOS ? 'fetch (iOS fallback)' : 'GM_xmlhttpRequest');
+        
+        // Use fetch API for iOS Safari
+        if (isIOS || typeof GM_xmlhttpRequest === 'undefined') {
+            try {
+                console.log('Using fetch API for iOS Safari compatibility');
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    headers: requestHeaders,
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+                
+                console.log('Fetch Response Status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Parsed refresh data:', data);
+                    return data;
+                } else if (response.status === 500) {
+                    const errorText = await response.text();
+                    let errorMessage = 'Server error occurred';
                     try {
-                        console.log('Refresh API Response:', response.status, response.responseText);
-                        if (response.status === 200) {
-                            const data = JSON.parse(response.responseText);
-                            console.log('Parsed refresh data:', data);
-                            resolve(data);
-                        } else if (response.status === 500) {
-                            // Handle 500 errors more gracefully for refresh endpoint
-                            let errorMessage = 'Server error occurred';
-                            try {
-                                const errorData = JSON.parse(response.responseText);
-                                if (errorData.message) {
-                                    errorMessage = errorData.message;
-                                }
-                            } catch (e) {
-                                // Use default message if can't parse error
+                        const errorData = JSON.parse(errorText);
+                        if (errorData.message) errorMessage = errorData.message;
+                    } catch (e) {}
+                    throw new Error(`Refresh API Error: ${errorMessage}. Try the regular Bypass instead.`);
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`API Error: ${response.status} - ${response.statusText} - ${errorText}`);
+                }
+            } catch (e) {
+                console.error('Fetch error:', e);
+                throw new Error(`Fetch failed: ${e.message}`);
+            }
+        } else {
+            return new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: requestUrl,
+                    headers: requestHeaders,
+                    timeout: 30000,
+                    onload: (response) => {
+                        try {
+                            console.log('Refresh API Response:', response.status, response.responseText);
+                            if (response.status === 200) {
+                                const data = JSON.parse(response.responseText);
+                                console.log('Parsed refresh data:', data);
+                                resolve(data);
+                            } else if (response.status === 500) {
+                                let errorMessage = 'Server error occurred';
+                                try {
+                                    const errorData = JSON.parse(response.responseText);
+                                    if (errorData.message) {
+                                        errorMessage = errorData.message;
+                                    }
+                                } catch (e) {}
+                                reject(new Error(`Refresh API Error: ${errorMessage}. Try the regular Bypass instead.`));
+                            } else {
+                                reject(new Error(`API Error: ${response.status} - ${response.statusText} - ${response.responseText}`));
                             }
-                            reject(new Error(`Refresh API Error: ${errorMessage}. Try the regular Bypass instead.`));
-                        } else {
-                            reject(new Error(`API Error: ${response.status} - ${response.statusText} - ${response.responseText}`));
+                        } catch (e) {
+                            reject(new Error(`Failed to parse API response: ${e.message} - Raw response: ${response.responseText}`));
                         }
-                    } catch (e) {
-                        reject(new Error(`Failed to parse API response: ${e.message} - Raw response: ${response.responseText}`));
-                    }
-                },
-                onerror: (error) => reject(new Error('Network error occurred during refresh')),
-                ontimeout: () => reject(new Error('Refresh request timed out - try regular Bypass instead'))
+                    },
+                    onerror: (error) => reject(new Error('Network error occurred during refresh')),
+                    ontimeout: () => reject(new Error('Refresh request timed out - try regular Bypass instead'))
+                });
             });
-        });
+        }
     }
 
     // Notification popup creation
@@ -727,8 +840,10 @@
             right: 0 !important;
             bottom: 0 !important;
             pointer-events: none !important;
-            z-index: 2147483647 !important;
+            z-index: 999999 !important;
             isolation: isolate !important;
+            -webkit-transform: translateZ(0) !important;
+            transform: translateZ(0) !important;
         `;
 
         const notification = document.createElement('div');
@@ -1211,12 +1326,12 @@
             }
         }
 
-        // Event listeners
-        redirectBtn.onclick = () => {
+        // Event listeners with enhanced mobile touch support
+        addMobileTouchSupport(redirectBtn, () => {
             if (countdownInterval) clearInterval(countdownInterval);
             handleRedirect(false);
-        };
-        refreshBtn.onclick = () => {
+        });
+        addMobileTouchSupport(refreshBtn, () => {
             if (countdownInterval) clearInterval(countdownInterval);
             
             // Show message that refresh endpoint is down
@@ -1249,28 +1364,16 @@
                     btnText.textContent = 'Refresh';
                 }
             }, 3000);
-        };
+        });
         if (stopCountdownBtn) {
-            stopCountdownBtn.onclick = stopCountdown;
-        }
-        // Improved close button handler with multiple event types
-        function attachCloseHandler(element) {
-            if (!element) return;
-            
-            const closeHandler = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (countdownInterval) clearInterval(countdownInterval);
-                closeModal();
-            };
-            
-            // Attach multiple event types for better compatibility
-            element.onclick = closeHandler;
-            element.addEventListener('click', closeHandler, true);
-            element.addEventListener('touchstart', closeHandler, true);
+            addMobileTouchSupport(stopCountdownBtn, stopCountdown);
         }
         
-        attachCloseHandler(closeBtn);
+        // Close button with mobile touch support
+        addMobileTouchSupport(closeBtn, () => {
+            if (countdownInterval) clearInterval(countdownInterval);
+            closeModal();
+        });
 
         // Close on Escape key
         document.addEventListener('keydown', (e) => {
@@ -1340,7 +1443,7 @@
 
     // Initialize the script with full page load wait and visibility detection (NON-LUARMOR SITES ONLY)
     function init() {
-        console.log('Bypass.VIP Premium Bypasser v3.2.1 - Initializing regular bypass system...');
+        console.log('Bypass.VIP Premium Bypasser v3.3.3-mobile (iOS Safari Optimized) - Initializing...');
         
         // Wait for complete page load including all resources
         function waitForFullPageLoad() {
